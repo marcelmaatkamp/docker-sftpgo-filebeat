@@ -1,0 +1,113 @@
+services:
+
+  redpanda:
+    image: redpandadata/redpanda:${REDPANDA_VERSION}
+    restart: unless-stopped
+    command:
+      - redpanda start
+      - --overprovisioned
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --node-id 0
+      - --check=false
+      - --kafka-addr 0.0.0.0:${REDPANDA_PORT_KAFKA_INTERNAL}
+      - --advertise-kafka-addr redpanda:${REDPANDA_PORT_KAFKA_INTERNAL}
+      - --pandaproxy-addr 0.0.0.0:${REDPANDA_PORT_HTTP_INTERNAL}
+      - --advertise-pandaproxy-addr redpanda:${REDPANDA_PORT_HTTP_INTERNAL}
+      - --set redpanda.enable_transactions=true
+      - --set redpanda.enable_idempotence=true
+    ports:
+      - "${REDPANDA_PORT_SCHEMA_EXTERNAL}:${REDPANDA_PORT_SCHEMA_INTERNAL}"          # Schema Registry port
+      - "${REDPANDA_PORT_HTTP_EXTERNAL}:${REDPANDA_PORT_HTTP_INTERNAL}"              # HTTP Proxy port
+      - "${REDPANDA_PORT_KAFKA_EXTERNAL}:${REDPANDA_PORT_KAFKA_INTERNAL}"            # Kafka API port
+      - "${REDPANDA_PORT_PROMETHEUS_EXTERNAL}:${REDPANDA_PORT_PROMETHEUS_INTERNAL}"  #  Prometheus and HTTP admin port
+      - "${REDPANDA_PORT_GRPC_EXTERNAL}:${REDPANDA_PORT_GRPC_INTERNAL}"              # internal RPC port
+    volumes:
+      - redpanda:/var/lib/redpanda/data
+    healthcheck: { test: "curl -f localhost:${REDPANDA_PORT_PROMETHEUS_INTERNAL}/v1/status/ready", interval: 1s, start_period: 30s }
+
+  console:
+    image: redpandadata/console:${REDPANDA_CONSOLE_VERSION}
+    restart: unless-stopped
+    entrypoint: /bin/sh
+    command: -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml; /app/console"
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:${REDPANDA_PORT_KAFKA_INTERNAL}"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda:${REDPANDA_PORT_SCHEMA_INTERNAL}"]
+        connect:
+          enabled: true
+          clusters:
+            - name: datagen
+              url: http://connect:${REDPANDA_PORT_CONNECT_INTERNAL}
+    ports:
+      - "${REDPANDA_CONSOLE_PORT_EXTERNAL}:${REDPANDA_CONSOLE_PORT_INTERNAL}"
+    healthcheck: { test: "curl -f localhost:${REDPANDA_CONSOLE_PORT_INTERNAL}", interval: 1s, start_period: 30s }
+    depends_on:
+      redpanda:
+        condition: service_healthy
+
+  sftpgo:
+    image: drakkan/sftpgo:v2.6.2-plugins
+    depends_on:
+      - postgres
+    ports:
+      - "2222:2022"
+      - "8080:8080"
+      - "5007:5007"
+    volumes:
+      - ./services/sftpgo/sftpgo.yml:/etc/sftpgo/sftpgo.yml
+      # - :/srv/sftpgo/data
+      # - :/srv/sftpgo/backups
+      - ./services/sftpgo/sftpgo.yml:/var/lib/sftpgo/sftpgo.yml
+
+    environment:
+      SFTPGO_CONFIG_FILE: /etc/sftpgo/sftpgo.yml
+      SFTPGO_LOGGING_LEVEL: info
+      SFTPGO_HTTPD__BINDINGS__0__PORT: 8080
+      SFTPGO_HTTPD__BINDINGS__0__ADDRESS: 0.0.0.0
+      SFTPGO_DATA_PROVIDER__CREATE_DEFAULT_ADMIN: "true"
+      SFTPGO_DEFAULT_ADMIN_USERNAME: admin
+      SFTPGO_DEFAULT_ADMIN_PASSWORD: password
+      SFTPGO_ADMIN_USER: admin
+      SFTPGO_ADMIN_PASSWORD: password
+      SFTPGO_WEBDAVD__BINDINGS__0__PORT: 5007
+      SFTPGO_DATA_PROVIDER__DRIVER: postgresql
+      SFTPGO_DATA_PROVIDER__NAME: postgres
+      SFTPGO_DATA_PROVIDER__HOST: postgres
+      SFTPGO_DATA_PROVIDER__PORT: 5432
+      SFTPGO_DATA_PROVIDER__USERNAME: sftpgo
+      SFTPGO_DATA_PROVIDER__PASSWORD: sftpgo
+      SFTPGO_LOADDATA_FROM: /tmp/user-sftpgo.json
+
+  postgres:
+    image: postgres:latest
+    restart: always
+    user: postgres
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      # - ./create_tables.sql:/docker-entrypoint-initdb.d/create_tables.sql
+    environment:
+      POSTGRES_DB: sftpgo
+      POSTGRES_USER: sftpgo
+      POSTGRES_PASSWORD: sftpgo
+    expose:
+      - 5432
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+
+  filebeat:
+    image: elastic/filebeat:8.14.3
+    volumes:
+      - ./services/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      # - /var/lib/docker/containers:/var/lib/docker/containers:ro
+volumes:
+  redpanda:
+  postgres:
