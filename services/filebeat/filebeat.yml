@@ -1,10 +1,25 @@
+uurt en daarna de bestanden verwijdert:
 
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /path/to/your/directory/*.log
+    close_eof: true
+    clean_removed: true
 
 output.kafka:
   hosts: ["kafka:9092"]
-  topic: "%{[fields.log_topic]}"
+  topic: 'your_topic'
   partition.round_robin:
     reachable_only: false
   required_acks: 1
   compression: gzip
   max_message_bytes: 1000000
+
+processors:
+  - drop_fields:
+      fields: ["host", "agent", "ecs", "log", "input", "cloud", "event"]
+
+setup.template.enabled: false
+setup.ilm.enabled: false
