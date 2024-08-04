@@ -1,10 +1,8 @@
-uurt en daarna de bestanden verwijdert:
-
 filebeat.inputs:
-  - type: log
-    enabled: true
+  - type: filestream
+    id: cvsfiles
     paths:
-      - /path/to/your/directory/*.log
+      - /path/to/your/directory/*.csv
     close_eof: true
     clean_removed: true
 

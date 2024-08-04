@@ -1,0 +1,111 @@
+# https://github.com/drakkan/sftpgo/blob/master/docs/full-configuration.md
+# example config: https://github.com/drakkan/sftpgo/blob/master/sftpgo.json
+common:
+  #idle_timeout:
+  # integer. 0 means standard: the files are uploaded directly to the requested
+  # path. 1 means atomic: files are uploaded to a temporary path and renamed to
+  # the requested path when the client ends the upload
+  upload_mode: 0
+  # integer. 0 means "normal mode": requests for changing permissions,
+  # owner/group and access/modification times are executed. 1 means
+  # "ignore mode": requests for changing permissions, owner/group and
+  # access/modification times are silently ignored.
+  setstat_mode: 1
+  #proxy_protocol:
+  #proxy_allowed:
+  #post_connect_hook:
+  actions:
+    execute_on: [upload, delete, rename]
+    hook: http://web:3000/internal/sftpgo/hook
+
+sftpd:
+  bind_port: 2022
+  bind_address: ""
+  max_auth_tries: 0
+  # everyone can read/write uploads, but execute permissions are removed
+  umask: "0111"
+  banner: ""
+  #host_keys: []
+  # curl has poor support for newer algorithms
+  kex_algorithms:
+    - curve25519-sha256
+    - curve25519-sha256@libssh.org
+    - ecdh-sha2-nistp256
+    - ecdh-sha2-nistp384
+    - ecdh-sha2-nistp521
+    - diffie-hellman-group14-sha256
+    - diffie-hellman-group16-sha512
+    - diffie-hellman-group18-sha512
+    - diffie-hellman-group14-sha1
+    - diffie-hellman-group1-sha1
+  #ciphers: []
+  #macs: []
+  #trusted_user_ca_keys: []
+  #login_banner_file: ''
+  enabled_ssh_commands:
+    - md5sum
+    - sha1sum
+    - cd
+    - pwd
+    - scp
+  #keyboard_interactive_auth_hook:
+  #password_authentication:
+#ftpd:
+#webdavd
+data_provider:
+  driver: postgresql
+  # from config/settings.default.yml
+  name: postgres
+  # docker-compose service name
+  host: postgres
+  port: 5432
+  # DEV ONLY!
+  username: sftpgo
+  password: sftpgo
+  #sslmode: 2 # verify-ca
+  sql_tables_prefix: sftpgo_
+  manage_users: 1
+  track_quota: 0
+  #pool_size:
+  update_mode: 0
+  # essentially a dummy directory
+  users_base_dir: /data/users
+  #actions:
+  #external_auth_hook:
+  #external_auth_scope:
+  #credentials_path:
+  #pre_login_program:
+  #pre_login_hook:
+  #post_login_hook:
+  #post_login_scope:
+  #check_password_hook:
+  #check_password_scope:
+  #password_hashing:
+  #  boolean. Before you can use SFTPGo you need to create an admin account.
+  # If you open the admin web UI, a setup screen will guide you in creating the
+  # first admin account. You can automatically create the first admin account by
+  # enabling this setting and setting the environment variables
+  # SFTPGO_DEFAULT_ADMIN_USERNAME and SFTPGO_DEFAULT_ADMIN_PASSWORD.
+  # You can also create the first admin by loading initial data.
+  # This setting has no effect if an admin account is already found within the data provider.
+  create_default_admin: true
+httpd:
+  # all paths in this section are relative to config dir
+  bindings:
+    - port: 8080
+      # string. Leave blank to listen on all available network interfaces. Default: "127.0.0.1"
+      address: ""
+  # Use the templates built by sftpgo
+  templates_path: /usr/share/sftpgo/templates
+  static_files_path: /usr/share/sftpgo/static
+  #backups_path: backups
+  auth_user_file: "httpd_auth"
+  # no ssl for testing
+  certificate_file: ""
+  certificate_key_file: ""
+  # string. Passphrase to use to derive the signing key for JWT and CSRF tokens.
+  # If empty a random signing key will be generated each time SFTPGo starts.
+  #If you set a signing passphrase you should consider rotating it periodically
+  # for added security.
+  # We set this so we can mock JWTs for testing. DO NOT set in prod.
+  signing_passphrase: iamapassphrasethatneverendsyesigoonandonsomepeoplestartedusingitnotknowingwhatitwasandtheylljustcontinueusingitforeverjustbecause

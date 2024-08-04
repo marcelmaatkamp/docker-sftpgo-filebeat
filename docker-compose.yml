@@ -61,29 +61,12 @@ services:
       - "8080:8080"
       - "5007:5007"
     volumes:
-      - ./services/sftpgo/sftpgo.yml:/etc/sftpgo/sftpgo.yml
-      # - :/srv/sftpgo/data
-      # - :/srv/sftpgo/backups
-      - ./services/sftpgo/sftpgo.yml:/var/lib/sftpgo/sftpgo.yml
-
+      - ./services/sftpgo/sftpgo.yaml:/etc/sftpgo/sftpgo.yaml
     environment:
-      SFTPGO_CONFIG_FILE: /etc/sftpgo/sftpgo.yml
-      SFTPGO_LOGGING_LEVEL: info
-      SFTPGO_HTTPD__BINDINGS__0__PORT: 8080
-      SFTPGO_HTTPD__BINDINGS__0__ADDRESS: 0.0.0.0
+      SFTPGO_CONFIG_FILE: /etc/sftpgo/sftpgo.yaml
       SFTPGO_DATA_PROVIDER__CREATE_DEFAULT_ADMIN: "true"
       SFTPGO_DEFAULT_ADMIN_USERNAME: admin
       SFTPGO_DEFAULT_ADMIN_PASSWORD: password
-      SFTPGO_ADMIN_USER: admin
-      SFTPGO_ADMIN_PASSWORD: password
-      SFTPGO_WEBDAVD__BINDINGS__0__PORT: 5007
-      SFTPGO_DATA_PROVIDER__DRIVER: postgresql
-      SFTPGO_DATA_PROVIDER__NAME: postgres
-      SFTPGO_DATA_PROVIDER__HOST: postgres
-      SFTPGO_DATA_PROVIDER__PORT: 5432
-      SFTPGO_DATA_PROVIDER__USERNAME: sftpgo
-      SFTPGO_DATA_PROVIDER__PASSWORD: sftpgo
-      SFTPGO_LOADDATA_FROM: /tmp/user-sftpgo.json
 
   postgres:
     image: postgres:latest
@@ -102,6 +85,20 @@ services:
       test: [ "CMD", "pg_isready" ]
       interval: 10s
       timeout: 5s
+  pgadmin:
+    image: dpage/pgadmin4
+    depends_on:
+      - postgres
+    restart: always
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    volumes:
+      - pgadmin:/var/lib/pgadmin
 
   filebeat:
     image: elastic/filebeat:8.14.3
@@ -111,3 +108,4 @@ services:
 volumes:
   redpanda:
   postgres:
+  pgadmin:
