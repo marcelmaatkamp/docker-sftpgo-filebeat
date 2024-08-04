@@ -25,7 +25,11 @@ services:
       - "${REDPANDA_PORT_GRPC_EXTERNAL}:${REDPANDA_PORT_GRPC_INTERNAL}"              # internal RPC port
     volumes:
       - redpanda:/var/lib/redpanda/data
-    healthcheck: { test: "curl -f localhost:${REDPANDA_PORT_PROMETHEUS_INTERNAL}/v1/status/ready", interval: 1s, start_period: 30s }
+    healthcheck: {
+      test: "curl -f localhost:${REDPANDA_PORT_PROMETHEUS_INTERNAL}/v1/status/ready",
+      interval: 1s,
+       start_period: 30s
+    }
 
   console:
     image: redpandadata/console:${REDPANDA_CONSOLE_VERSION}
@@ -54,6 +58,7 @@ services:
 
   sftpgo:
     image: drakkan/sftpgo:v2.6.2-plugins
+    user: root
     depends_on:
       - postgres
     ports:
@@ -62,11 +67,14 @@ services:
       - "5007:5007"
     volumes:
       - ./services/sftpgo/sftpgo.yaml:/etc/sftpgo/sftpgo.yaml
+      - ./services/sftpgo/user-sftpgo.json:/tmp/user-sftpgo.json
+      - sftpgo-users:/data/users
     environment:
       SFTPGO_CONFIG_FILE: /etc/sftpgo/sftpgo.yaml
       SFTPGO_DATA_PROVIDER__CREATE_DEFAULT_ADMIN: "true"
       SFTPGO_DEFAULT_ADMIN_USERNAME: admin
       SFTPGO_DEFAULT_ADMIN_PASSWORD: password
+      SFTPGO_LOADDATA_FROM: /tmp/user-sftpgo.json
 
   postgres:
     image: postgres:latest
@@ -85,27 +93,32 @@ services:
       test: [ "CMD", "pg_isready" ]
       interval: 10s
       timeout: 5s
-  pgadmin:
-    image: dpage/pgadmin4
-    depends_on:
-      - postgres
-    restart: always
-    ports:
-      - "8888:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
-    volumes:
-      - pgadmin:/var/lib/pgadmin
 
-  filebeat:
+  #  pgadmin:
+  #    image: dpage/pgadmin4
+  #    depends_on:
+  #      - postgres
+  #    restart: always
+  #    ports:
+  #      - "8888:80"
+  #    environment:
+  #      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
+  #      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+  #      PGADMIN_CONFIG_SERVER_MODE: 'False'
+  #      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+  #    volumes:
+  #      - pgadmin:/var/lib/pgadmin
+
+  filebeat-input:
     image: elastic/filebeat:8.14.3
+    depends_on:
+      - redpanda
     volumes:
-      - ./services/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      # - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./services/filebeat/input/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./services/filebeat/data/ais.csv:/data/input/ais.csv
+
 volumes:
   redpanda:
   postgres:
   pgadmin:
+  sftpgo-users:

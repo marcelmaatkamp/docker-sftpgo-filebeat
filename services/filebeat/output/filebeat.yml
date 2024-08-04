@@ -1,4 +1,4 @@
-filebeat.inputs:
+filebeat.outputs:
   - type: filestream
     id: cvsfiles
     paths:
@@ -6,9 +6,9 @@ filebeat.inputs:
     close_eof: true
     clean_removed: true
 
-output.kafka:
+input.kafka:
   hosts: ["kafka:9092"]
-  topic: 'your_topic'
+  topic: 'output'
   partition.round_robin:
     reachable_only: false
   required_acks: 1

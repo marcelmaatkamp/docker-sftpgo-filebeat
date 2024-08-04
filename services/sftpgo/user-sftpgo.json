@@ -1,0 +1,13 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "status": 1,
+      "username": "sftpgo",
+      "password": "sftpgo",
+      "permissions":{"/": ["*"]},
+      "filters": {}
+    }
+  ],
+  "version": 10
+}
