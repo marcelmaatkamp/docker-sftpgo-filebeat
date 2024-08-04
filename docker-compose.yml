@@ -117,8 +117,18 @@ services:
       - ./services/filebeat/input/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - ./services/filebeat/data/ais.csv:/data/input/ais.csv
 
+  filebeat-output:
+    image: elastic/filebeat:8.14.3
+    user: root
+    depends_on:
+      - redpanda
+    volumes:
+      - ./services/filebeat/output/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - filebeat-output:/data/output
+
 volumes:
   redpanda:
   postgres:
   pgadmin:
   sftpgo-users:
+  filebeat-output:

@@ -9,6 +9,7 @@ filebeat.inputs:
 output.kafka:
   hosts: ["redpanda:9092"]
   topic: 'input'
+  group_id: "filebeat-input"
   partition.round_robin:
     reachable_only: false
   required_acks: 1

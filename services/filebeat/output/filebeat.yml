@@ -1,23 +1,13 @@
-filebeat.outputs:
-  - type: filestream
-    id: cvsfiles
-    paths:
-      - /path/to/your/directory/*.csv
-    close_eof: true
-    clean_removed: true
+filebeat.inputs:
+  - type: kafka
+    hosts:
+      - redpanda:9092
+    topics: ["input"]
+    group_id: "filebeat-output"
 
-input.kafka:
-  hosts: ["kafka:9092"]
-  topic: 'output'
-  partition.round_robin:
-    reachable_only: false
-  required_acks: 1
-  compression: gzip
-  max_message_bytes: 1000000
-
-processors:
-  - drop_fields:
-      fields: ["host", "agent", "ecs", "log", "input", "cloud", "event"]
-
-setup.template.enabled: false
-setup.ilm.enabled: false
+output.file:
+    enabled: true
+    path: "/data/output"
+    filename: "filebeat"
+    # rotate_every_kb: 10000
+    # number_of_files: 7
